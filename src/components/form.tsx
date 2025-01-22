@@ -1,63 +1,70 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { useEffect } from 'react';
 
-import { helloAction } from '@/actions/hello-action';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/components/ui/use-toast';
+import { MessageList } from '@/components/ui/message-list';
+import { useAutoScroll } from '@/hooks/use-auto-scroll';
+import useChat from '@/hooks/use-chat';
 import { cn } from '@/lib/utils';
 import * as m from '@/paraglide/messages';
 
-const formSchema = z.object({
-  name: z.string().min(3),
-});
-
-type FormSchema = z.infer<typeof formSchema>;
-
-export const HeroForm = () => {
-  const form = useForm<FormSchema>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: '',
-    },
+export function HeroForm({ session }: { session: string }) {
+  const { form, handleGenerate, isPending, messageList } = useChat({
+    sessionId: session,
   });
-  const { toast } = useToast();
-
-  const onSubmit = async ({ name }: FormSchema) => {
-    const { message } = await helloAction(name);
-
-    toast({ description: message });
-  };
+  const {
+    containerRef,
+    handleScroll,
+    handleTouchStart,
+  } = useAutoScroll([messageList]);
+  useEffect(() => {
+    form.setValue('sessionId', session);
+  }, []);
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex gap-3">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormControl>
-                <Input
-                  placeholder={m.input_placeholder()}
-                  className={cn(
-                    'md:w-96',
-                    form.formState.errors.name && 'border-destructive'
-                  )}
-                  {...field}
-                />
-              </FormControl>
-            </FormItem>
-          )}
+    <div>
+      <div
+          ref={containerRef}
+          onScroll={handleScroll}
+          onTouchStart={handleTouchStart}
+          className="h-[calc(100vh-161px)] overflow-y-auto px-6"
+      >
+        <MessageList
+            messages={messageList}
+            isTyping={isPending}
         />
-        <Button variant="secondary" type="submit">
-          {m.submit_form()}
-        </Button>
-      </form>
-    </Form>
+      </div>
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(handleGenerate)}
+          className="flex justify-center gap-3 py-2"
+        >
+          <FormField
+            control={form.control}
+            name="question"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Input
+                    placeholder={m.type_your_question()}
+                    className={cn(
+                      'md:w-96',
+                      form.formState.errors.question && 'border-destructive'
+                    )}
+                    {...field}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          <Button variant="secondary" type="submit">
+            {m.submit_form()}
+          </Button>
+        </form>
+      </Form>
+    </div>
   );
-};
+}
