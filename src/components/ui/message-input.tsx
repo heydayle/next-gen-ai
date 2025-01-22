@@ -5,9 +5,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowUp, Paperclip, Square, X } from 'lucide-react';
 import { omit } from 'remeda';
 
-import { useAutosizeTextArea } from '@/components/hooks/use-autosize-textarea';
 import { Button } from '@/components/ui/button';
 import { FilePreview } from '@/components/ui/file-preview';
+import { useAutosizeTextArea } from '@/hooks/use-autosize-textarea';
 import { cn } from '@/lib/utils';
 
 interface MessageInputBaseProps
@@ -145,6 +145,7 @@ export function MessageInput({
     props.allowAttachments && props.files && props.files.length > 0;
 
   useAutosizeTextArea({
+    // @ts-ignore
     ref: textAreaRef,
     maxHeight: 240,
     borderWidth: 1,

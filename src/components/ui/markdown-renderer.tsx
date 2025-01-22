@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React, { JSX, Suspense } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -10,6 +10,7 @@ interface MarkdownRendererProps {
 }
 
 export function MarkdownRenderer({ children }: MarkdownRendererProps) {
+  // @ts-ignore
   return (
     <Markdown
       remarkPlugins={[remarkGfm]}
