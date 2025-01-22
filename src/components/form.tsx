@@ -15,27 +15,22 @@ export function HeroForm({ session }: { session: string }) {
   const { form, handleGenerate, isPending, messageList } = useChat({
     sessionId: session,
   });
-  const {
-    containerRef,
-    handleScroll,
-    handleTouchStart,
-  } = useAutoScroll([messageList]);
+  const { containerRef, handleScroll, handleTouchStart } = useAutoScroll([
+    messageList,
+  ]);
   useEffect(() => {
     form.setValue('sessionId', session);
-  }, []);
+  });
 
   return (
     <div>
       <div
-          ref={containerRef}
-          onScroll={handleScroll}
-          onTouchStart={handleTouchStart}
-          className="h-[calc(100vh-161px)] overflow-y-auto px-6"
+        ref={containerRef}
+        onScroll={handleScroll}
+        onTouchStart={handleTouchStart}
+        className="h-[calc(100vh-161px)] overflow-y-auto p-6"
       >
-        <MessageList
-            messages={messageList}
-            isTyping={isPending}
-        />
+        <MessageList messages={messageList} isTyping={isPending} />
       </div>
       <Form {...form}>
         <form
