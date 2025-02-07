@@ -35,7 +35,7 @@ export function HeroForm({ session }: { session: string }) {
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(handleGenerate)}
-          className="flex justify-center gap-3 py-2"
+          className="container flex justify-center gap-3 p-2 [&>div]:flex-1"
         >
           <FormField
             control={form.control}
@@ -46,7 +46,7 @@ export function HeroForm({ session }: { session: string }) {
                   <Input
                     placeholder={m.type_your_question()}
                     className={cn(
-                      'md:w-96',
+                      'md:w-full',
                       form.formState.errors.question && 'border-destructive'
                     )}
                     {...field}

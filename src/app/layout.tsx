@@ -4,10 +4,12 @@ import { PropsWithChildren } from 'react';
 import { LanguageProvider } from '@inlang/paraglide-next';
 import type { Metadata } from 'next';
 
+import { AppSidebar } from '@/components/app-sidebar';
 import { Footer } from '@/components/footer';
 import { Navbar } from '@/components/navbar/navbar';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ThemeSwitcher } from '@/components/theme-switcher';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/toaster';
 import { siteConfig } from '@/lib/constant';
 import { fonts } from '@/lib/fonts';
@@ -52,14 +54,23 @@ const RootLayout = ({ children }: PropsWithChildren) => {
   return (
     <LanguageProvider>
       <html lang={languageTag()} suppressHydrationWarning>
-        <body className={cn('min-h-screen font-sans', fonts)}>
-          <ThemeProvider attribute="class">
-            <Navbar />
-            {children}
-            <ThemeSwitcher className="absolute bottom-5 right-5 z-10" />
-            <Footer />
-            <Toaster />
-          </ThemeProvider>
+        <body
+          className={'overflow-x-hidden' + cn('min-h-screen font-sans', fonts)}
+        >
+          <SidebarProvider defaultOpen={false}>
+            <AppSidebar />
+            <div className="flex-1 overflow-x-hidden">
+              <ThemeProvider attribute="class">
+                <Navbar>
+                  <SidebarTrigger className="m-4" />
+                </Navbar>
+                {children}
+                <ThemeSwitcher className="absolute bottom-5 right-5 z-10" />
+                <Footer />
+                <Toaster />
+              </ThemeProvider>
+            </div>
+          </SidebarProvider>
         </body>
       </html>
     </LanguageProvider>

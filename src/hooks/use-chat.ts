@@ -1,9 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'next/navigation';
+import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
+import { useIndexedDB } from './use-db';
+
 import { useToast } from '@/components/ui/use-toast';
+
+export interface Chat {
+  id?: string;
+  histories: History[];
+  date: string;
+  sessionId: string;
+}
 
 interface History {
   role: string;
@@ -22,8 +33,20 @@ const formSchema = z.object({
 });
 
 type FormSchema = z.infer<typeof formSchema>;
+
 const useChat = ({ sessionId }: { sessionId: string }) => {
   const { toast } = useToast();
+  const {
+    add,
+    get,
+    getAll,
+    update,
+    db,
+    error: dbError,
+  } = useIndexedDB<Chat>({
+    dbName: 'devAIoka',
+    storeName: 'Chat_sessions',
+  });
 
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
@@ -32,60 +55,130 @@ const useChat = ({ sessionId }: { sessionId: string }) => {
       sessionId: '',
     },
   });
+
   const [message, setMessage] = useState('');
   const [messageList, setMessageList] = useState<MessageItem[]>([]);
   const [isPending, setIsPending] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [isDbReady, setIsDbReady] = useState(false);
 
-  const initMessageHistory = () => {
-    const localSessions = JSON.parse(localStorage?.getItem(sessionId) || '[]');
-    if (localSessions?.length === 0) return;
-    const messages = localSessions?.map((item: History) => ({
-      id: Date.now().toString(),
-      role: item.role,
-      content: item.parts[0].text,
-    }));
-    setMessageList(messages);
+  const router = useRouter();
+  const onNewChat = () => {
+    const id = uuidv4();
+    router.push(`/chat/${id}`);
   };
 
-  useEffect(initMessageHistory, [sessionId]);
+  const initMessageHistory = async () => {
+    if (!isDbReady || dbError) return;
 
-  const handleGenerate = async ({ question, sessionId }: FormSchema) => {
+    try {
+      const chatSessions = await getAll();
+      const currentSession = chatSessions.find(
+        (session) => session.sessionId === sessionId
+      );
+
+      if (currentSession && currentSession.histories) {
+        const localSessions = currentSession.histories;
+        console.log('localSessions', localSessions);
+
+        if (localSessions?.length > 0) {
+          const messages = localSessions.map((item: History) => ({
+            id: Date.now().toString(),
+            role: item.role,
+            content: item.parts[0].text,
+          }));
+          setMessageList(messages);
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing message history', error);
+    }
+  };
+
+  useEffect(() => {
+    if (db && !dbError) {
+      setIsDbReady(true);
+    }
+  }, [db, dbError]);
+
+  useEffect(() => {
+    if (isDbReady) {
+      initMessageHistory();
+    }
+  }, [isDbReady, sessionId]);
+
+  const updateMessageList = async (sessions: History[]) => {
+    const chatSessions = await getAll();
+    const currentSession = chatSessions.find(
+      (session) => session.sessionId === sessionId
+    );
+    if (currentSession && currentSession.sessionId) {
+      await update({
+        id: currentSession.sessionId,
+        sessionId,
+        histories: sessions,
+        date: new Date().toISOString(),
+      });
+    }
+  };
+
+  const handleGenerate = async ({ question }: FormSchema) => {
+    if (!isDbReady) {
+      toast({ description: 'Database not ready' });
+      return;
+    }
+
     try {
       const newMessage: History = {
         role: 'user',
         parts: [{ text: question }],
       };
-      const newHistory = JSON.stringify([]);
 
-      if (!localStorage.getItem(sessionId)) {
-        localStorage.setItem(sessionId, newHistory);
-      }
-      const localSessions = JSON.parse(localStorage.getItem(sessionId) || '[]');
-
-      localStorage.setItem(
-        sessionId,
-        JSON.stringify([...localSessions, newMessage])
+      const chatSessions = await getAll();
+      const currentSession = chatSessions.find(
+        (session) => session.sessionId === sessionId
       );
-      setMessageList((prev) => {
-        return [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            role: newMessage.role,
-            content: newMessage.parts[0].text,
-          },
-        ];
-      });
-      form.setValue('question', '');
 
+      const localSessions = currentSession?.histories || [];
+      const updatedSessions = [...localSessions, newMessage];
+
+      if (currentSession && currentSession.sessionId) {
+        await update({
+          id: sessionId,
+          sessionId,
+          histories: updatedSessions,
+          date: new Date().toISOString(),
+        });
+      } else {
+        await add({
+          id: sessionId,
+          sessionId,
+          histories: updatedSessions,
+          date: new Date().toISOString(),
+        });
+      }
+
+      setMessageList((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: newMessage.role,
+          content: newMessage.parts[0].text,
+        },
+      ]);
+
+      form.setValue('question', '');
       setIsPending(true);
+
       const response = await fetch('/api/gemini', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ body: question, localSessions }),
+        body: JSON.stringify({
+          body: question,
+          localSessions: updatedSessions,
+        }),
       });
 
       const data = await response;
@@ -95,26 +188,18 @@ const useChat = ({ sessionId }: { sessionId: string }) => {
           role: 'model',
           parts: [{ text: JSON.parse(result).code }],
         };
+        const finalSessions = [...updatedSessions, modelSession];
+        updateMessageList(finalSessions);
 
-        const localSessionsNew = JSON.parse(
-          localStorage.getItem(sessionId) || '[]'
-        );
-
-        const newSessionsHistory = JSON.stringify([
-          ...localSessionsNew,
-          modelSession,
+        setMessageList((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            role: modelSession.role,
+            content: modelSession.parts[0].text,
+          },
         ]);
-        localStorage.setItem(sessionId, newSessionsHistory);
-        setMessageList((prev) => {
-          return [
-            ...prev,
-            {
-              id: Date.now().toString(),
-              role: modelSession.role,
-              content: modelSession.parts[0].text,
-            },
-          ];
-        });
+
         setMessage(JSON.parse(result).code);
       } else {
         toast({ description: 'error' });
@@ -137,6 +222,8 @@ const useChat = ({ sessionId }: { sessionId: string }) => {
     setMessage,
     handleGenerate,
     initMessageHistory,
+    isDbReady,
+    onNewChat,
   };
 };
 

@@ -1,5 +1,5 @@
 <a href="https://next-starter-skolaczk.vercel.app/">
-<img src="https://github.com/Skolaczk/next-starter/assets/76774237/44b552ff-43aa-441f-b1d0-de9bdfc2a73f" alt="thubnail">
+<img src="https://github.com/user-attachments/assets/3b0cec71-feea-4eea-82c8-6c7431b4c178" alt="thubnail">
 </a>
 <p align="center">
   <a href="#-features"><strong>Features</strong></a> ·
@@ -137,4 +137,4 @@ To contribute, please follow these steps:
 
 If you liked the project, I will appreciate if you leave a star. 🌟😊
 
-Made by <a href="https://michalskolak.netlify.app/">Michał Skolak</a> 
+Made by <a href="https://thinh.io.vn/">Devaloka</a> 
